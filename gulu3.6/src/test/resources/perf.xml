@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans.dtd">
+<beans default-autowire="byName">
+
+   <bean id="noRandom" class="com.taobao.gulu.perf.PerfInfo">
+   		<!-- 设置并发线程   -->
+   		<property name="concurrencyList" value="10 100 300 600 900"/>
+   				
+		<!-- 设置压测工具信息  -->
+		<property name="ABSenderPath" value="/home/admin/ABSender" />
+		<property name="host" value="1.0.0.0"/>
+		<property name="username" value="username" />
+		<property name="password" value="passwords" />
+		<property name="perfCommand" value=" -t 100 -n 100000000 -M 'http://1.0.0.0:80/beacon.html?kw=no_random'" />
+		
+		<!-- 设置压测数据保存地址  -->
+		<property name="xlsxFilePath" value="src/test/resources/testResult/noRandom.xls" />
+		
+		<!-- 设置性能测试名称  -->
+		<property name="perfTestTitle" value="no random mode" />
+    </bean>
+    
+    <bean id="oneRandom" class="com.taobao.gulu.perf.PerfInfo">
+   		<!-- 设置并发线程   -->
+   		<property name="concurrencyList" value="10 100 300 600 900"/>
+   				
+		<!-- 设置压测工具信息  -->
+		<property name="ABSenderPath" value="/home/admin/ABSender" />
+		<property name="host" value="1.0.0.0"/>
+		<property name="username" value="username" />
+		<property name="password" value="passwords" />
+		<property name="perfCommand" value=" -t 100 -n 100000000 -M 'http://1.0.0.0:80/beacon.html?kw=1_random'" />
+		
+		<!-- 设置压测数据保存地址  -->
+		<property name="xlsxFilePath" value="src/test/resources/testResult/oneRandom.xls" />
+		
+		<!-- 设置性能测试名称  -->
+		<property name="perfTestTitle" value="get one random mode" />
+    </bean>
+    
+    <bean id="twoRandom" class="com.taobao.gulu.perf.PerfInfo">
+   		<!-- 设置并发线程   -->
+   		<property name="concurrencyList" value="10 100 300 600 900"/>
+   				
+		<!-- 设置压测工具信息  -->
+		<property name="ABSenderPath" value="/home/admin/ABSender" />
+		<property name="host" value="1.0.0.0"/>
+		<property name="username" value="username" />
+		<property name="password" value="passwords" />
+		<property name="perfCommand" value=" -t 100 -n 100000000 -M 'http://1.0.0.0:80/beacon.html?kw=2_random'" />
+		
+		<!-- 设置压测数据保存地址  -->
+		<property name="xlsxFilePath" value="src/test/resources/testResult/twoRandom.xls" />
+		
+		<!-- 设置性能测试名称  -->
+		<property name="perfTestTitle" value="get tow random mode" />
+    </bean>
+    
+    <bean id="threeRandom" class="com.taobao.gulu.perf.PerfInfo">
+   		<!-- 设置并发线程   -->
+   		<property name="concurrencyList" value="10 100 300 600 900"/>
+   				
+		<!-- 设置压测工具信息  -->
+		<property name="ABSenderPath" value="/home/admin/ABSender" />
+		<property name="host" value="1.0.0.0"/>
+		<property name="username" value="username" />
+		<property name="password" value="passwords" />
+		<property name="perfCommand" value=" -t 100 -n 100000000 -M 'http://1.0.0.0:80/beacon.html?kw=3_random'" />
+		
+		<!-- 设置压测数据保存地址  -->
+		<property name="xlsxFilePath" value="src/test/resources/testResult/threeRandom.xls" />
+		
+		<!-- 设置性能测试名称  -->
+		<property name="perfTestTitle" value="get three random mode" />
+    </bean>
+    
+    <bean id="tenRandom" class="com.taobao.gulu.perf.PerfInfo">
+   		<!-- 设置并发线程   -->
+   		<property name="concurrencyList" value="10 100 300 600 900"/>
+   				
+		<!-- 设置压测工具信息  -->
+		<property name="ABSenderPath" value="/home/admin/ABSender" />
+		<property name="host" value="1.0.0.0"/>
+		<property name="username" value="username" />
+		<property name="password" value="passwords" />
+		<property name="perfCommand" value=" -t 100 -n 100000000 -M 'http://1.0.0.0:80/beacon.html?kw=10_random'" />
+		
+		<!-- 设置压测数据保存地址  -->
+		<property name="xlsxFilePath" value="src/test/resources/testResult/tenRandom.xls" />
+		
+		<!-- 设置性能测试名称  -->
+		<property name="perfTestTitle" value="get ten random mode" />
+    </bean>
+    
+    
+    <!-- $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ -->
+    
+    
+  
+    
+</beans>
