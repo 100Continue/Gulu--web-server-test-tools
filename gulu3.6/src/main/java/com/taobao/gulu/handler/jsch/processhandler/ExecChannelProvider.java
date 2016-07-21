@@ -68,7 +68,7 @@ public class ExecChannelProvider {
 			channel.setErrStream(System.err);
 			channel.connect();
 		}catch (Exception e) {
-			throw new OperationException(e.toString());
+			throw new OperationException(e.getMessage());
 		}
 	}
 

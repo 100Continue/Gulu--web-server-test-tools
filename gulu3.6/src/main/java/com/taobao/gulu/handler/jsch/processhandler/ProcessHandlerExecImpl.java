@@ -1,5 +1,6 @@
 package com.taobao.gulu.handler.jsch.processhandler;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -51,6 +52,19 @@ public class ProcessHandlerExecImpl implements ProcessHandler {
 			else
 				return execCommand(cmd);
 		}
+	}
+	
+	public InputStream executeCmdForPerf(String destServer, String cmd) throws OperationException, IOException {
+
+			this.authorization.setHost(destServer);
+			setExecChannelProvider(this.authorization);
+
+			try {
+				this.channel = execChannelProvider.getChannelWithOutPty(cmd);
+				return channel.getInputStream();
+			} catch (Exception e) {
+				throw new OperationException(e.getMessage());
+			}
 	}
 
 	@Override
@@ -187,9 +201,10 @@ public class ProcessHandlerExecImpl implements ProcessHandler {
 			this.channel = execChannelProvider.getChannelWithOutPty(command);
 			return getOperationResult(channel.getInputStream(), channel.getErrStream());
 		} catch (Exception e) {
-			throw new OperationException(e);
+			throw new OperationException(e.getMessage());
 		}
 	}
+	
 
 	private OperationResult execBackground(String command)
 			throws OperationException {
@@ -373,4 +388,19 @@ public class ProcessHandlerExecImpl implements ProcessHandler {
 
 		return result;
 	}
+	
+	public InputStream executeCmdinLocal(String cmd)
+			throws OperationException {
+
+		try {
+			log.info("Executing command: " + cmd);
+			Process p = Runtime.getRuntime().exec(cmd);
+
+			return p.getInputStream();
+		} catch (Exception e) {
+			log.error("execute command in local mathine error: " + e.getMessage());
+			throw new OperationException(e);
+		}
+	}
+	
 }

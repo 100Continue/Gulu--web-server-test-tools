@@ -10,16 +10,6 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 
-import jxl.Cell;
-import jxl.Sheet;
-import jxl.Workbook;
-import jxl.read.biff.BiffException;
-import jxl.write.Label;
-import jxl.write.WritableSheet;
-import jxl.write.WritableWorkbook;
-import jxl.write.WriteException;
-import jxl.write.biff.RowsExceededException;
-
 import org.apache.log4j.Logger;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartUtilities;
@@ -31,9 +21,18 @@ import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.renderer.category.LineAndShapeRenderer;
 import org.jfree.data.category.DefaultCategoryDataset;
 
-import ch.ethz.ssh2.ChannelCondition;
-import ch.ethz.ssh2.Connection;
-import ch.ethz.ssh2.Session;
+import com.taobao.gulu.handler.jsch.authorization.PasswordAuthorization;
+import com.taobao.gulu.handler.jsch.processhandler.ProcessHandlerExecImpl;
+
+import jxl.Cell;
+import jxl.Sheet;
+import jxl.Workbook;
+import jxl.read.biff.BiffException;
+import jxl.write.Label;
+import jxl.write.WritableSheet;
+import jxl.write.WritableWorkbook;
+import jxl.write.WriteException;
+import jxl.write.biff.RowsExceededException;
 
 /**
  * <p>
@@ -50,14 +49,13 @@ import ch.ethz.ssh2.Session;
 public class PerfTool {
 
 	private static Logger logger = Logger.getLogger(PerfTool.class);
-	private Connection conn;
-	private Session session;
+	// private Connection conn;
+	// private Session session;
 
 	public void doPerfTest(PerfInfo perfInfo) throws Exception {
 
 		// create Workbook
-		WritableWorkbook wwb = Workbook.createWorkbook(new File(perfInfo
-				.getXlsxFilePath()));
+		WritableWorkbook wwb = Workbook.createWorkbook(new File(perfInfo.getXlsxFilePath()));
 		WritableSheet sheet = wwb.createSheet("value", 0);
 
 		String concurrencyList[] = perfInfo.getConcurrencyList().split(" ");
@@ -66,26 +64,10 @@ public class PerfTool {
 
 		for (String concurrency : concurrencyList) {
 			String cmd = "";
-			cmd = cmd + perfInfo.getABSenderPath() + " -c " + concurrency + " "
-					+ perfInfo.getPerfCommand();
+			cmd = cmd + perfInfo.getABSenderPath() + " -c " + concurrency + " " + perfInfo.getPerfCommand();
 
-			if (isExecuteRemoteCommand(perfInfo)) {
-
-				UserAuthentication server = new UserAuthentication(
-						perfInfo.getHost(), perfInfo.getUsername(),
-						perfInfo.getPassword());
-
-				doExecuteCommand(server, cmd);
-				collectPerfResult(session.getStdout(), row, num, sheet);
-				doStopExecute();
-			} else {
-				String cmdList[] = cmd.split(" ");
-				ProcessBuilder builder = new ProcessBuilder(cmdList);
-				Process p = builder.start();
-				collectPerfResult(p.getInputStream(), row, num, sheet);
-				logger.info(builder.command().toString() + " exit_code="
-						+ p.waitFor());
-			}
+			InputStream result = doExecuteCommand(perfInfo, cmd);
+			collectPerfResult(result, row, num, sheet);
 			row++;
 			TimeUnit.SECONDS.sleep(10);
 		}
@@ -94,8 +76,7 @@ public class PerfTool {
 	}
 
 	public void processData(ArrayList<PerfInfo> perfInfoArray, String filePath)
-			throws IOException, RowsExceededException, WriteException,
-			BiffException {
+			throws IOException, RowsExceededException, WriteException, BiffException {
 		WritableWorkbook wwb = Workbook.createWorkbook(new File(filePath));
 		WritableSheet sheet = wwb.createSheet("value", 0);
 		// WritableSheet sheet2 = wwb.createSheet("average_chart",1);
@@ -112,9 +93,8 @@ public class PerfTool {
 	}
 
 	@SuppressWarnings("deprecation")
-	public void doChart(String xlsFileName, String fileName,
-			int concurrency_num, int perf_num) throws IOException,
-			BiffException {
+	public void doChart(String xlsFileName, String fileName, int concurrency_num, int perf_num)
+			throws IOException, BiffException {
 		Workbook wb = Workbook.getWorkbook(new File(xlsFileName));
 		Sheet readSheet = wb.getSheet(0);
 		DecimalFormat decimalformat1 = new DecimalFormat("##.##");
@@ -129,14 +109,12 @@ public class PerfTool {
 			row = tmp;
 			row_tmp = 1;
 			for (; row <= concurrency_num; row++, row_tmp++)
-				rpsdataset.addValue(Double.parseDouble(readSheet.getCell(
-						column, row).getContents()),
-						readSheet.getCell(column, 0).getContents(), readSheet
-								.getCell(row_tmp, 1 + ((concurrency_num) * 6))
-								.getContents());
+				rpsdataset.addValue(Double.parseDouble(readSheet.getCell(column, row).getContents()),
+						readSheet.getCell(column, 0).getContents(),
+						readSheet.getCell(row_tmp, 1 + ((concurrency_num) * 6)).getContents());
 		}
-		JFreeChart rpschart = ChartFactory.createLineChart(
-				"Requests Per Second", // chart title
+		JFreeChart rpschart = ChartFactory.createLineChart("Requests Per Second", // chart
+																					// title
 				"Concurrency Level", // domain axis label
 				"Requests per second:  [#/sec]", // range axis label
 				rpsdataset, // data
@@ -144,18 +122,15 @@ public class PerfTool {
 				true, // include legend
 				true, // tooltips
 				false // urls
-				);
+		);
 		CategoryPlot rpsplot = rpschart.getCategoryPlot();
 		// customise the range axis...
 		NumberAxis rpsrangeAxis = (NumberAxis) rpsplot.getRangeAxis();
 		rpsrangeAxis.setAutoRangeIncludesZero(true);
 		rpsrangeAxis.setUpperMargin(0.20);
 
-		LineAndShapeRenderer rpsrenderer = (LineAndShapeRenderer) rpsplot
-				.getRenderer();
-		rpsrenderer
-				.setItemLabelGenerator(new StandardCategoryItemLabelGenerator(
-						"{2}", decimalformat1));
+		LineAndShapeRenderer rpsrenderer = (LineAndShapeRenderer) rpsplot.getRenderer();
+		rpsrenderer.setItemLabelGenerator(new StandardCategoryItemLabelGenerator("{2}", decimalformat1));
 		rpsrenderer.setItemLabelsVisible(true);
 		rpsrenderer.setBaseItemLabelsVisible(true);
 		rpsrenderer.setShapesFilled(Boolean.TRUE);
@@ -168,21 +143,18 @@ public class PerfTool {
 		// write Time per request(mean) png file
 		column = 1;
 		row_tmp = 1;
-		tmp = row;
-		row++;
+		tmp = row - 1;
 		DefaultCategoryDataset tpsudataset = new DefaultCategoryDataset();
 		for (; column <= perf_num; column++) {
 			row = tmp + 1;
 			row_tmp = 1;
 			for (; row <= (tmp + concurrency_num); row++, row_tmp++)
-				tpsudataset.addValue(Double.parseDouble(readSheet.getCell(
-						column, row).getContents()),
-						readSheet.getCell(column, 0).getContents(), readSheet
-								.getCell(row_tmp, 1 + ((concurrency_num) * 6))
-								.getContents());
+				tpsudataset.addValue(Double.parseDouble(readSheet.getCell(column, row).getContents()),
+						readSheet.getCell(column, 0).getContents(),
+						readSheet.getCell(row_tmp, 1 + ((concurrency_num) * 6)).getContents());
 		}
-		JFreeChart tpsuchart = ChartFactory.createLineChart(
-				"Time per request(mean)", // chart title
+		JFreeChart tpsuchart = ChartFactory.createLineChart("Time per request(mean)", // chart
+																						// title
 				"Concurrency Level", // domain axis label
 				"Time per request:  [ms] (mean)", // range axis label
 				tpsudataset, // data
@@ -190,18 +162,15 @@ public class PerfTool {
 				true, // include legend
 				true, // tooltips
 				false // urls
-				);
+		);
 		CategoryPlot tpsuplot = tpsuchart.getCategoryPlot();
 		// customise the range axis...
 		NumberAxis tpsurangeAxis = (NumberAxis) tpsuplot.getRangeAxis();
 		tpsurangeAxis.setAutoRangeIncludesZero(true);
 		tpsurangeAxis.setUpperMargin(0.20);
 
-		LineAndShapeRenderer tpsurenderer = (LineAndShapeRenderer) tpsuplot
-				.getRenderer();
-		tpsurenderer
-				.setItemLabelGenerator(new StandardCategoryItemLabelGenerator(
-						"{2}", decimalformat1));
+		LineAndShapeRenderer tpsurenderer = (LineAndShapeRenderer) tpsuplot.getRenderer();
+		tpsurenderer.setItemLabelGenerator(new StandardCategoryItemLabelGenerator("{2}", decimalformat1));
 		tpsurenderer.setItemLabelsVisible(true);
 		tpsurenderer.setBaseItemLabelsVisible(true);
 		tpsurenderer.setShapesFilled(Boolean.TRUE);
@@ -214,44 +183,36 @@ public class PerfTool {
 		// file
 		column = 1;
 		row_tmp = 1;
-		tmp = row;
-		row++;
+		tmp = row - 1;
 		DefaultCategoryDataset tpssdataset = new DefaultCategoryDataset();
 		for (; column <= perf_num; column++) {
 			row = tmp + 1;
 			row_tmp = 1;
 			for (; row <= (tmp + concurrency_num); row++, row_tmp++)
-				tpssdataset.addValue(Double.parseDouble(readSheet.getCell(
-						column, row).getContents()),
-						readSheet.getCell(column, 0).getContents(), readSheet
-								.getCell(row_tmp, 1 + ((concurrency_num) * 6))
-								.getContents());
+				tpssdataset.addValue(Double.parseDouble(readSheet.getCell(column, row).getContents()),
+						readSheet.getCell(column, 0).getContents(),
+						readSheet.getCell(row_tmp, 1 + ((concurrency_num) * 6)).getContents());
 		}
-		JFreeChart tpsschart = ChartFactory
-				.createLineChart(
-						"Time per request(mean, across all concurrent requests))", // chart
-																					// title
-						"Concurrency Level", // domain axis label
-						"Time per request:  [ms] (mean, across all concurrent requests)", // range
-																							// axis
-																							// label
-						tpssdataset, // data
-						PlotOrientation.VERTICAL, // orientation
-						true, // include legend
-						true, // tooltips
-						false // urls
-				);
+		JFreeChart tpsschart = ChartFactory.createLineChart("Time per request(mean, across all concurrent requests))", // chart
+																														// title
+				"Concurrency Level", // domain axis label
+				"Time per request:  [ms] (mean, across all concurrent requests)", // range
+																					// axis
+																					// label
+				tpssdataset, // data
+				PlotOrientation.VERTICAL, // orientation
+				true, // include legend
+				true, // tooltips
+				false // urls
+		);
 		CategoryPlot tpssplot = tpsschart.getCategoryPlot();
 		// customise the range axis...
 		NumberAxis tpssrangeAxis = (NumberAxis) tpssplot.getRangeAxis();
 		tpssrangeAxis.setAutoRangeIncludesZero(true);
 		tpssrangeAxis.setUpperMargin(0.20);
 
-		LineAndShapeRenderer tpssrenderer = (LineAndShapeRenderer) tpssplot
-				.getRenderer();
-		tpssrenderer
-				.setItemLabelGenerator(new StandardCategoryItemLabelGenerator(
-						"{2}", decimalformat1));
+		LineAndShapeRenderer tpssrenderer = (LineAndShapeRenderer) tpssplot.getRenderer();
+		tpssrenderer.setItemLabelGenerator(new StandardCategoryItemLabelGenerator("{2}", decimalformat1));
 		tpssrenderer.setItemLabelsVisible(true);
 		tpssrenderer.setBaseItemLabelsVisible(true);
 		tpssrenderer.setShapesFilled(Boolean.TRUE);
@@ -264,21 +225,18 @@ public class PerfTool {
 		// write ransfer rate(received) png file
 		column = 1;
 		row_tmp = 1;
-		tmp = row;
-		row++;
+		tmp = row - 1;
 		DefaultCategoryDataset rrdataset = new DefaultCategoryDataset();
 		for (; column <= perf_num; column++) {
 			row = tmp + 1;
 			row_tmp = 1;
 			for (; row <= (tmp + concurrency_num); row++, row_tmp++)
-				rrdataset.addValue(Double.parseDouble(readSheet.getCell(column,
-						row).getContents()), readSheet.getCell(column, 0)
-						.getContents(),
-						readSheet.getCell(row_tmp, 1 + ((concurrency_num) * 6))
-								.getContents());
+				rrdataset.addValue(Double.parseDouble(readSheet.getCell(column, row).getContents()),
+						readSheet.getCell(column, 0).getContents(),
+						readSheet.getCell(row_tmp, 1 + ((concurrency_num) * 6)).getContents());
 		}
-		JFreeChart rrchart = ChartFactory.createLineChart(
-				"Ransfer Rate(received)", // chart title
+		JFreeChart rrchart = ChartFactory.createLineChart("Tansfer Rate(received)", // chart
+																					// title
 				"Concurrency Level", // domain axis label
 				"Ransfer Rate([Kbytes/sec] received)", // range axis label
 				rrdataset, // data
@@ -286,33 +244,28 @@ public class PerfTool {
 				true, // include legend
 				true, // tooltips
 				false // urls
-				);
+		);
 		CategoryPlot rrplot = rrchart.getCategoryPlot();
 		// customise the range axis...
 		NumberAxis rrrangeAxis = (NumberAxis) rrplot.getRangeAxis();
 		rrrangeAxis.setAutoRangeIncludesZero(true);
 		rrrangeAxis.setUpperMargin(0.20);
 
-		LineAndShapeRenderer rrrenderer = (LineAndShapeRenderer) rrplot
-				.getRenderer();
-		rrrenderer
-				.setItemLabelGenerator(new StandardCategoryItemLabelGenerator(
-						"{2}", decimalformat1));
+		LineAndShapeRenderer rrrenderer = (LineAndShapeRenderer) rrplot.getRenderer();
+		rrrenderer.setItemLabelGenerator(new StandardCategoryItemLabelGenerator("{2}", decimalformat1));
 		rrrenderer.setItemLabelsVisible(true);
 		rrrenderer.setBaseItemLabelsVisible(true);
 		rrrenderer.setShapesFilled(Boolean.TRUE);
 		rrrenderer.setShapesVisible(true);
 
-		FileOutputStream rrpng = new FileOutputStream(fileName + "_RR.png");
+		FileOutputStream rrpng = new FileOutputStream(fileName + "_TR.png");
 		ChartUtilities.writeChartAsPNG(rrpng, rrchart, 1000, 500);
 		rrpng.close();
 	}
 
 	private void editSheet(PerfInfo perfInfo, WritableSheet sheet, int column)
-			throws BiffException, IOException, RowsExceededException,
-			WriteException {
-		Workbook wb = Workbook
-				.getWorkbook(new File(perfInfo.getXlsxFilePath()));
+			throws BiffException, IOException, RowsExceededException, WriteException {
+		Workbook wb = Workbook.getWorkbook(new File(perfInfo.getXlsxFilePath()));
 		Sheet readSheet = wb.getSheet(0);
 		String concurrencyList[] = perfInfo.getConcurrencyList().split(" ");
 		int num = concurrencyList.length;
@@ -322,16 +275,14 @@ public class PerfTool {
 
 		for (int tmp = 1; tmp <= (num) * 6; tmp++) {
 			Cell cell = readSheet.getCell(0, tmp);
-			jxl.write.Number number = new jxl.write.Number(column, tmp,
-					Double.parseDouble(cell.getContents()));
+			jxl.write.Number number = new jxl.write.Number(column, tmp, Double.parseDouble(cell.getContents()));
 			sheet.addCell(number);
 		}
 
 		wb.close();
 	}
 
-	private void initComment(PerfInfo perfInfo, WritableSheet sheet)
-			throws RowsExceededException, WriteException {
+	private void initComment(PerfInfo perfInfo, WritableSheet sheet) throws RowsExceededException, WriteException {
 		// init comment
 		String concurrencyList[] = perfInfo.getConcurrencyList().split(" ");
 		int num = concurrencyList.length;
@@ -346,18 +297,15 @@ public class PerfTool {
 		sheet.addCell(tpru);
 
 		// Time per request([ms] mean, across all concurrent requests):
-		Label tprs = new Label(0, tmp + (num * 2),
-				"Time per request([ms] mean, across all concurrent requests): ");
+		Label tprs = new Label(0, tmp + (num * 2), "Time per request([ms] mean, across all concurrent requests): ");
 		sheet.addCell(tprs);
 
 		// Transfer rate([Kbytes/sec] received):
-		Label tr = new Label(0, tmp + (num * 3),
-				"Transfer rate([Kbytes/sec] received): ");
+		Label tr = new Label(0, tmp + (num * 3), "Transfer rate([Kbytes/sec] received): ");
 		sheet.addCell(tr);
 
 		// Time taken for tests(seconds):
-		Label ttft = new Label(0, tmp + (num * 4),
-				"Time taken for tests(seconds): ");
+		Label ttft = new Label(0, tmp + (num * 4), "Time taken for tests(seconds): ");
 		sheet.addCell(ttft);
 
 		// Complete requests:
@@ -371,51 +319,41 @@ public class PerfTool {
 		// tmp
 		for (int column = 0; column <= (num - 1); column++) {
 
-			sheet.addCell(new jxl.write.Number(column + 1, tmp + (num * 6),
-					Double.parseDouble(concurrencyList[column])));
+			sheet.addCell(
+					new jxl.write.Number(column + 1, tmp + (num * 6), Double.parseDouble(concurrencyList[column])));
 		}
 
 	}
 
 	private boolean isExecuteRemoteCommand(PerfInfo perfInfo) {
-		return !(perfInfo.getHost() == null || perfInfo.getUsername() == null || perfInfo
-				.getPassword() == null);
+		return !(perfInfo.getHost() == null || perfInfo.getHost().isEmpty() || perfInfo.getHost().equals("")
+				|| perfInfo.getUsername() == null || perfInfo.getPassword() == null);
 	}
 
-	private void initSession(UserAuthentication server) throws Exception {
-		conn = new Connection(server.getHost());
-		conn.connect();
-		boolean success = conn.authenticateWithPassword(server.getUsername(),
-				server.getPassword());
-		if (success) {
-			logger.info("initialize session SUCCESS");
+	private InputStream doExecuteCommand(PerfInfo perfInfo, String cmd) throws Exception {
+		logger.info("execute perf command : " + cmd);
+
+		UserAuthentication server = new UserAuthentication(perfInfo.getHost(), perfInfo.getUsername(),
+				perfInfo.getPassword());
+		PasswordAuthorization passwords = new PasswordAuthorization(server.getUsername(), server.getPassword());
+		ProcessHandlerExecImpl process = new ProcessHandlerExecImpl(passwords);
+
+		InputStream result;
+
+		if (isExecuteRemoteCommand(perfInfo)) {
+
+			result = process.executeCmdForPerf(server.getHost(), cmd);
+
 		} else {
-			logger.info("initialize session FAIL, Host: " + server.getHost());
-			throw new Exception("initialize session FAIL");
+			result = process.executeCmdinLocal(cmd);
+
 		}
-		session = conn.openSession();
+
+		return result;
 	}
 
-	private void doExecuteCommand(UserAuthentication server, String cmd)
-			throws Exception {
-		logger.info("execute remote command with result");
-		initSession(server);
-		logger.info("execute remote command : " + cmd);
-		session.execCommand(cmd);
-	}
-
-	private void doStopExecute() {
-		session.waitForCondition(ChannelCondition.EXIT_STATUS, 0);
-		int status = session.getExitStatus();
-		logger.info("exit_code : " + status);
-		session.close();
-		conn.close();
-	}
-
-	private void collectPerfResult(InputStream inputStream, int row, int num,
-			WritableSheet sheet) throws Exception {
-		BufferedReader br = new BufferedReader(new InputStreamReader(
-				inputStream));
+	private void collectPerfResult(InputStream inputStream, int row, int num, WritableSheet sheet) throws Exception {
+		BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
 		StringBuffer sb = new StringBuffer();
 		String stringArray[];
 		String line = br.readLine();
@@ -433,39 +371,34 @@ public class PerfTool {
 				stringArray = line.split(":");
 				stringArray = stringArray[1].split("\\[");
 				double tpru = Double.parseDouble(stringArray[0]);
-				jxl.write.Number number = new jxl.write.Number(0, row + num,
-						tpru);
+				jxl.write.Number number = new jxl.write.Number(0, row + num, tpru);
 				sheet.addCell(number);
 			}
 			if (line.contains("[ms] (mean, across all concurrent requests)")) {
 				stringArray = line.split(":");
 				stringArray = stringArray[1].split("\\[");
 				double tprs = Double.parseDouble(stringArray[0]);
-				jxl.write.Number number = new jxl.write.Number(0, row
-						+ (num * 2), tprs);
+				jxl.write.Number number = new jxl.write.Number(0, row + (num * 2), tprs);
 				sheet.addCell(number);
 			}
 			if (line.contains("Transfer rate:")) {
 				stringArray = line.split(":");
 				stringArray = stringArray[1].split("\\[");
 				double tr = Double.parseDouble(stringArray[0]);
-				jxl.write.Number number = new jxl.write.Number(0, row
-						+ (num * 3), tr);
+				jxl.write.Number number = new jxl.write.Number(0, row + (num * 3), tr);
 				sheet.addCell(number);
 			}
 			if (line.contains("Time taken for tests")) {
 				stringArray = line.split(":");
 				stringArray = stringArray[1].split("s");
 				double ttft = Double.parseDouble(stringArray[0]);
-				jxl.write.Number number = new jxl.write.Number(0, row
-						+ (num * 4), ttft);
+				jxl.write.Number number = new jxl.write.Number(0, row + (num * 4), ttft);
 				sheet.addCell(number);
 			}
 			if (line.contains("Complete requests")) {
 				stringArray = line.split(":");
 				double cr = Double.parseDouble(stringArray[1]);
-				jxl.write.Number number = new jxl.write.Number(0, row
-						+ (num * 5), cr);
+				jxl.write.Number number = new jxl.write.Number(0, row + (num * 5), cr);
 				sheet.addCell(number);
 			}
 
