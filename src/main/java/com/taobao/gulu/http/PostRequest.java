@@ -22,11 +22,24 @@ import com.taobao.gulu.tools.FailedHandle;
 public class PostRequest extends RequestExecution {
 	private static Logger logger = Logger.getLogger(PostRequest.class);
 
+	//Inner class for UTF-8 support     
+	public static class UTF8PostMethod extends PostMethod{     
+	    public UTF8PostMethod(String url){     
+	    super(url);     
+	    }     
+	    @Override     
+	    public String getRequestCharSet() {     
+	        //return super.getRequestCharSet();     
+	        return "UTF-8";     
+	    }  
+	}  
+	  
+	
 	/*
 	 * set postMethod
 	 */
-	private PostMethod getPostMethod() throws Exception {
-		PostMethod postMethod = new PostMethod(getUrl());
+	private UTF8PostMethod getPostMethod() throws Exception {
+		UTF8PostMethod postMethod = new UTF8PostMethod(getUrl());
 
 		Header[] headers = getHeaders();
 		if (headers != null)
@@ -70,7 +83,7 @@ public class PostRequest extends RequestExecution {
 	 */
 	public Response doRequest() throws Exception {
 
-		PostMethod httpMethod = getPostMethod();
+		UTF8PostMethod httpMethod = getPostMethod();
 		return doRequest(httpMethod);
 	}
 
