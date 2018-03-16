@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
+<suite name="Suite" verbose="3" parallel="tests" thread-count="9">
+
+    <listeners>
+        <listener class-name="Base.RetryListener"></listener>
+        <listener class-name="Base.TestListener"></listener>
+        <!-- testNg报告美化监听 -->
+        <listener class-name="org.uncommons.reportng.HTMLReporter" />
+		<listener class-name="org.uncommons.reportng.JUnitXMLReporter" />
+    </listeners>   
+    
+  <test name="Test_test01_DynamicForward">
+    <classes>
+    	<class name="TestCase.TestSample"/>
+	</classes>
+  </test>
+</suite>
