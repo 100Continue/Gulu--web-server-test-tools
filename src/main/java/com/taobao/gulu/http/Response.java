@@ -1,16 +1,12 @@
 package com.taobao.gulu.http;
 
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 
 import org.apache.commons.httpclient.Header;
 import org.apache.log4j.Logger;
-
-import com.taobao.gulu.tools.FailedHandle;
-import com.taobao.gulu.tools.Util;
 
 /**
  * <p>
@@ -19,7 +15,7 @@ import com.taobao.gulu.tools.Util;
  * <p>
  * Description: contain response info
  * </p>
- * 
+ *
  * @author: gongyuan.cz
  * @email: gongyuan.cz@taobao.com
  * @blog: 100continue.iteye.com
@@ -30,52 +26,27 @@ public class Response {
 	private int statusCode = 200;
 	private String statusLine = "OK";
 	private Header[] headers = null;
-	private String tmpfile = "src/main/resources/responseBody";
-	private int tmpfilelength = -1;
-	private byte[] body = null;
+	private String reponseBody = null;
 
 	public InputStream getResponseBodyAsStream() throws Exception {
-		return new FileInputStream(new File(this.tmpfile));
+		return new ByteArrayInputStream(this.reponseBody.getBytes("utf-8"));
 	}
 
 	public void setResponseBodyAsStream(InputStream responseBodyAsStream)
 			throws Exception {
-		saveToFile(responseBodyAsStream);
-		setBody();
-	}
-	
-	public void setBody() throws Exception{
-		setTmpFileLength((int) new File(this.tmpfile).length());
-		if(getTmpFileLength() < Integer.MAX_VALUE && getTmpFileLength() > 0)
-			this.body = Util.readFile(tmpfile, 0, 0);
-	}
-	
-	private void setTmpFileLength(int length){
-		this.tmpfilelength = length;
-	}
-
-	private int getTmpFileLength(){
-		return this.tmpfilelength;
-	}
-	
-	private void saveToFile(InputStream responseBodyAsStream) throws Exception {
-		FileOutputStream fos = null;
-		BufferedInputStream bis = null;
-		int BUFFER_SIZE = 1024;
-		byte[] buf = new byte[BUFFER_SIZE];
-		int size = 0;
-
-		if (responseBodyAsStream != null) {
-			bis = new BufferedInputStream(responseBodyAsStream);
-			fos = new FileOutputStream(this.tmpfile);
-			while ((size = bis.read(buf)) != -1)
-				fos.write(buf, 0, size);
-			fos.close();
-			bis.close();
-		}else{
-			fos = new FileOutputStream(this.tmpfile);
-			fos.write("".getBytes());
+		StringBuilder stringBuilder = new StringBuilder();
+		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(responseBodyAsStream));
+		boolean firstLine = true;
+		String line = null;
+		while((line = bufferedReader.readLine()) != null){
+			if(!firstLine){
+				stringBuilder.append(System.getProperty("line.separator"));
+			}else{
+				firstLine = false;
+			}
+			stringBuilder.append(line);
 		}
+		this.reponseBody = stringBuilder.toString();
 	}
 
 	public int getStatusCode() {
@@ -111,29 +82,16 @@ public class Response {
 	}
 
 	public String getResponseBodyAsString() throws Exception {
-		if (getTmpFileLength() > 0 && getTmpFileLength() < Integer.MAX_VALUE) {
-			return new String(this.body);
-		} else if(getTmpFileLength() == 0) {
-			return null;
-		} else {
-			String warnInfo = "Going to buffer response body of large or unknown size. "
-					+ "Using getResponseBodyAsStream instead is recommended."
-					+ "or you can read the response body from local file: "
-					+ tmpfile;
-			logger.error(warnInfo);
-			throw new FailedHandle(warnInfo);
-		}
+		return reponseBody;
 	}
 
 	private void showResponseBody() throws Exception {
-		if (this.body != null) {
-			logger.info(new String(this.body));
-		} else if(getTmpFileLength() == 0){
-			logger.info("<-- Do not Contain Response body, you should check Status Code. --!>");
-		}else {
+		if (this.reponseBody != null) {
+			logger.info(new String(this.reponseBody));
+		} else {
 			logger.info("<-- or Response body is too large can not buffer in memory. --!>");
 			logger.info("<-- or unknown size, you can get it in file: "
-					+ tmpfile + " --!>");
+					+ reponseBody + " --!>");
 		}
 	}
 
@@ -144,7 +102,7 @@ public class Response {
 	 * <p>
 	 * Description: show Response info
 	 * </p>
-	 * 
+	 *
 	 * @throws Exception
 	 */
 	public void showResponse() throws Exception {
